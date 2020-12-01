@@ -1,0 +1,37 @@
+version: "3.7"
+services:
+  db:
+    image: postgres:10.7
+    environment:
+      POSTGRES_USER: experiment
+      POSTGRES_PASSWORD: experiment
+    # Configure Postgres replication slot. Alternatively, this can be done via postgresql.conf
+    # https://debezium.io/documentation/reference/1.0/connectors/postgresql.html#server-configuration
+    command: postgres -c wal_level=logical -c max_wal_senders=1 -c max_replication_slots=1
+    volumes:
+      - ./setup_db_tables.sql:/docker-entrypoint-initdb.d/setup_db_tables.sql
+      # TODO: configuration for var/lib/postgresql/data/pg_hba.conf
+      # https://debezium.io/documentation/reference/1.0/connectors/postgresql.html#PostgreSQL-permissions
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    networks:
+      - default
+  pulsar:
+    # NOTE: the below image is pulsar-all (instead of pulsar), which has all the
+    # built-in connectors pre-bundled
+    # https://pulsar.apache.org/docs/en/standalone/#install-builtin-connectors-optional
+    image: apachepulsar/pulsar-all:2.6.0
+    command: bin/pulsar standalone
+    volumes:
+      - ./debezium-postgres-source-config.yaml:/debezium-postgres-source-config.yaml
+    expose:
+      - "6650"
+    ports:
+      - "6650:6650"
+      - "8080:8080"
+    networks:
+      - default
+networks:
+  default: {}
